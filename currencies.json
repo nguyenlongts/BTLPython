@@ -1,0 +1,29 @@
+[
+  {
+    "code": "USD",
+    "status": "Chưa tải",
+    "selected": true,
+    "checked": false
+  },
+  {
+    "code": "VND",
+    "status": "Chưa tải",
+    "selected": false,
+    "checked": false
+  },
+  {
+    "code": "CNY",
+    "status": "Chưa tải",
+    "checked": false
+  },
+  {
+    "code": "JPY",
+    "status": "Chưa tải",
+    "checked": false
+  },
+  {
+    "code": "AUS",
+    "status": "Chưa tải",
+    "checked": false
+  }
+]

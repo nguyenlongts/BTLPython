@@ -36,10 +36,12 @@ def open_file_comparator():
     differences = compare.compare_reports(file_paths)
     result_text.delete(1.0, tk.END)  
     if differences:
-        result_text.insert(tk.END, "\n".join(differences))
+        diff_result = "\n".join(differences)
+        result_text.insert(tk.END, diff_result)
+        set_emailContent(diff_result)  
     else:
         result_text.insert(tk.END, "No differences found.")
-
+        set_emailContent("No differences found.") 
 root = tk.Tk()
 root.title("Ứng dụng Gửi Email & So Sánh File")
 
@@ -58,13 +60,17 @@ entry_subject = tk.Entry(email_tab, width=50)
 entry_subject.pack(pady=5)
 
 tk.Label(email_tab, text="Nội dung:").pack()
-text_content = tk.Text(email_tab, width=60, height=10)
+text_content = tk.Text(email_tab, width=100, height=10)
 text_content.pack(pady=5)
+def set_emailContent():
+    content = result_text.get("1.0", tk.END).strip()
+    text_content.delete("1.0", tk.END)
+    text_content.insert(tk.END, content)
 
 btn_send_email = tk.Button(email_tab, text="Gửi Email", command=send_email)
 btn_send_email.pack(pady=10)
 
-# --- TAB SO SÁNH FILE ---
+
 file_compare_tab = ttk.Frame(notebook)
 notebook.add(file_compare_tab, text="So Sánh File")
 
@@ -73,6 +79,10 @@ btn_compare.pack(pady=10)
 
 result_text = tk.Text(file_compare_tab, width=100, height=20)
 result_text.pack(padx=10, pady=10)
+
+btn_setContent = tk.Button(file_compare_tab,text="Đặt làm nội dung email",command=set_emailContent)
+btn_setContent.pack(padx=10,pady=10)
+
 
 currency_tab = ttk.Frame(notebook)
 notebook.add(currency_tab, text="Tải Dữ Liệu Tiền Tệ")

@@ -9,35 +9,56 @@ from selenium.webdriver.chrome.service import Service
 import time
 from datetime import datetime
 import os
-
+import sqlite3
 import pandas as pd
 import json
 
-
-
-SAVE_FILE = "currencies.json"
+DB_FILE  = "currencies.db"
+def init_db():
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS currencies (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            code TEXT UNIQUE,
+            status TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
 
 def load_currencies():
-    if not os.path.exists(SAVE_FILE):
-        return []
-    with open(SAVE_FILE, "r", encoding="utf-8") as f:
-        content = f.read().strip()
-        if not content:
-            return []
-        return json.loads(content)
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT code, status FROM currencies")
+        rows = cursor.fetchall()
+        return [{"code": row[0], "status": row[1]} for row in rows]
 
-def save_currencies(data):
-    with open(SAVE_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
+def save_currency(code, status="Chưa tải"):
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT OR IGNORE INTO currencies (code, status)
+            VALUES (?, ?)
+        """, (code, status))
+        cursor.execute("""
+            UPDATE currencies SET status = ? WHERE code = ?
+        """, (status, code))
+        conn.commit()
+
+def delete_currency(code):
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM currencies WHERE code = ?", (code,))
+        conn.commit()
 
 
 def download_csv(currency_code, currencies, render_table, driver):
-   
     try:
         for i, c in enumerate(currencies):
             if c["code"].lower() == currency_code.lower():
                 currencies[i]["status"] = "Đang tải..."
-                save_currencies(currencies)
+                save_currency(c["code"], "Đang tải...")
                 render_table()
                 break
 
@@ -65,7 +86,7 @@ def download_csv(currency_code, currencies, render_table, driver):
             for i, c in enumerate(currencies):
                 if c["code"].lower() == currency_code.lower():
                     currencies[i]["status"] = f"Đã tải ({today})"
-                    save_currencies(currencies)
+                    save_currency(c["code"], f"Đã tải ({today})")
                     break
         else:
             raise Exception("Không tìm thấy file tải về.")
@@ -74,29 +95,28 @@ def download_csv(currency_code, currencies, render_table, driver):
         for i, c in enumerate(currencies):
             if c["code"].lower() == currency_code.lower():
                 currencies[i]["status"] = "Lỗi tải"
-                save_currencies(currencies)
+                save_currency(c["code"], "Lỗi tải")
                 break
     finally:
         render_table()
 
 
 def create_currency_downloader_gui(parent):
+    init_db()
     currencies = load_currencies()
-    
-    # Main container frame
+
     main_frame = tk.Frame(parent)
     main_frame.pack(pady=10, padx=10)
     entry_frame = tk.Frame(main_frame)
     entry_frame.pack(pady=10)
-    
     tk.Label(entry_frame, text="Nhập mã tiền tệ:").pack(side=tk.LEFT, padx=5)
     code_entry = tk.Entry(entry_frame)
     code_entry.pack(side=tk.LEFT, padx=5)
-    # Table Frame with border
+    
     table_frame = tk.Frame(main_frame, borderwidth=2, relief="solid", bg="white")
     table_frame.pack(pady=10, padx=10)
     
-    # Define columns
+    
     columns = ["Mã tiền tệ", "Trạng thái", "✔"]
     column_widths = [100, 200, 50]
     
@@ -109,29 +129,21 @@ def create_currency_downloader_gui(parent):
 
     table_cells = []
     check_vars = []
-    
-    
     def render_table():
-
         for widget in table_frame.grid_slaves():
             if int(widget.grid_info()["row"]) > 0:
                 widget.destroy()
-        
         table_cells.clear()
         check_vars.clear()
         
-        # Fill table with data
         for row_idx, currency in enumerate(currencies, start=1):
             row_cells = []
-            
-            # Code column
             code_cell = tk.Label(table_frame, text=currency["code"], 
                                font=('Arial', 12), borderwidth=1, relief="solid",
                                fg="blue", cursor="hand2", bg="white")
             code_cell.grid(row=row_idx, column=0, sticky="nsew")
             row_cells.append(code_cell)
-            
-            # Status column
+
             status_text = currency["status"]
             status_color = "black"
             if status_text == "Đang tải...":
@@ -147,14 +159,14 @@ def create_currency_downloader_gui(parent):
             status_cell.grid(row=row_idx, column=1, sticky="nsew")
             row_cells.append(status_cell)
             
-            # Checkbox column
-            check_var = tk.BooleanVar(value=currency.get("checked", False))
+
+            check_var = tk.BooleanVar(value=False)
             check_vars.append(check_var)
             
             def toggle_check(idx=row_idx-1):
                 currencies[idx]["checked"] = not currencies[idx].get("checked", False)
-                check_vars[idx].set(currencies[idx]["checked"])
-                save_currencies(currencies)
+                check_vars[idx].set(currencies[idx].get("checked", False))
+            
             
             check_cell = tk.Checkbutton(table_frame, variable=check_var, 
                                       command=lambda idx=row_idx-1: toggle_check(idx),
@@ -163,32 +175,34 @@ def create_currency_downloader_gui(parent):
             row_cells.append(check_cell)
             
             table_cells.append(row_cells)
-    
-    # Configure grid to expand
+    def reset_all():
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE currencies SET status = 'Chưa tải'")
+            conn.commit()
+        for currency in currencies:
+            currency["status"] = "Chưa tải" 
+        render_table()
     for i in range(len(columns)):
         table_frame.grid_columnconfigure(i, weight=1)
     
-    
-    
-
     def add_currency():
         code = code_entry.get().strip().upper()
         if not code:
             messagebox.showwarning("⚠️ Cảnh báo", "Vui lòng nhập mã tiền tệ!")
             return
-        
-        # Check if currency already exists
+    
         for c in currencies:
             if c["code"] == code:
                 messagebox.showinfo("Thông báo", f"Mã tiền tệ {code} đã tồn tại!")
                 return 
         
-        currencies.append({"code": code, "status": "Chưa tải", "checked": True})
-        save_currencies(currencies)
-        render_table()
+        save_currency(code)
         code_entry.delete(0, tk.END)  
+        currencies.append({"code": code, "status": "Chưa tải"}) 
+        render_table()   
     
-    add_button = tk.Button(entry_frame, text="Thêm", command=add_currency)
+    add_button = tk.Button(entry_frame, text="Thêm", command=add_currency,padx=10, pady=5)
     add_button.pack(side=tk.LEFT, padx=5)
     
     def download_selected():
@@ -214,20 +228,28 @@ def create_currency_downloader_gui(parent):
         finally:
             if driver is not None:
                 driver.quit()
-    
+    def delete_selected():
+        selected = [c for c in currencies if c.get("checked", False)]
+        if not selected:
+            messagebox.showwarning("⚠️ Cảnh báo", "Vui lòng chọn ít nhất một loại tiền tệ để xóa!")
+            return
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            for currency in selected:
+                cursor.execute("DELETE FROM currencies WHERE code = ?", (currency["code"],))
+            conn.commit()
+        
+        currencies[:] = [currency for currency in currencies if not currency.get("checked", False)]
+        
+        render_table()
     button_frame = tk.Frame(main_frame)
     button_frame.pack(pady=10)
-    download_button = tk.Button(button_frame, text="Tải xuống", bg="green", fg="white", 
+    download_button = tk.Button(button_frame, text="Tải xuống",
                               command=download_selected, padx=10, pady=5)
-    download_button.grid(row=0,column=0,pady=10)
-    def reset_status():
-        for currency in currencies:
-            currency["status"] = "Chưa tải"
-            currency["checked"] = False
-        save_currencies(currencies)
-        render_table()
-        messagebox.showinfo("✅ Thành công", "Đã đặt lại trạng thái và bỏ chọn tất cả tiền tệ.")
-    reset_button = tk.Button(button_frame, text="Đặt lại", bg="orange", fg="white", 
-                            command=reset_status, padx=10, pady=5)
-    reset_button.grid(row=0,column=1, padx=5)
+    download_button.grid(row=0, column=0, padx=5)
+    delete_button = tk.Button(entry_frame, text="Xoá", command=delete_selected, padx=10, pady=5)
+    delete_button.pack(side=tk.LEFT, padx=5)
+    reset_button = tk.Button(button_frame, text="Reset tất cả",
+                             command=reset_all, padx=10, pady=5)
+    reset_button.grid(row=0, column=1, padx=5)
     render_table()

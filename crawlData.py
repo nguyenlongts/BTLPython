@@ -11,7 +11,6 @@ from datetime import datetime
 import os
 import sqlite3
 import pandas as pd
-import json
 
 DB_FILE  = "currencies.db"
 def init_db():
@@ -61,7 +60,6 @@ def download_csv(currency_code, currencies, render_table, driver):
                 save_currency(c["code"], "Đang tải...")
                 render_table()
                 break
-
         driver.get(f"https://vn.investing.com/currencies/single-currency-crosses?currency={currency_code}")
 
         download_icon = WebDriverWait(driver, 10).until(
@@ -101,7 +99,7 @@ def download_csv(currency_code, currencies, render_table, driver):
         render_table()
 
 
-def create_currency_downloader_gui(parent):
+def gui_craw(parent):
     init_db()
     currencies = load_currencies()
 
@@ -109,6 +107,7 @@ def create_currency_downloader_gui(parent):
     main_frame.pack(pady=10, padx=10)
     entry_frame = tk.Frame(main_frame)
     entry_frame.pack(pady=10)
+
     tk.Label(entry_frame, text="Nhập mã tiền tệ:").pack(side=tk.LEFT, padx=5)
     code_entry = tk.Entry(entry_frame)
     code_entry.pack(side=tk.LEFT, padx=5)
@@ -135,7 +134,6 @@ def create_currency_downloader_gui(parent):
                 widget.destroy()
         table_cells.clear()
         check_vars.clear()
-        
         for row_idx, currency in enumerate(currencies, start=1):
             row_cells = []
             code_cell = tk.Label(table_frame, text=currency["code"], 
@@ -143,7 +141,6 @@ def create_currency_downloader_gui(parent):
                                fg="blue", cursor="hand2", bg="white")
             code_cell.grid(row=row_idx, column=0, sticky="nsew")
             row_cells.append(code_cell)
-
             status_text = currency["status"]
             status_color = "black"
             if status_text == "Đang tải...":
@@ -158,16 +155,11 @@ def create_currency_downloader_gui(parent):
                                  bg="white", fg=status_color)
             status_cell.grid(row=row_idx, column=1, sticky="nsew")
             row_cells.append(status_cell)
-            
-
             check_var = tk.BooleanVar(value=False)
             check_vars.append(check_var)
-            
             def toggle_check(idx=row_idx-1):
                 currencies[idx]["checked"] = not currencies[idx].get("checked", False)
                 check_vars[idx].set(currencies[idx].get("checked", False))
-            
-            
             check_cell = tk.Checkbutton(table_frame, variable=check_var, 
                                       command=lambda idx=row_idx-1: toggle_check(idx),
                                       borderwidth=1, relief="solid", bg="white")
@@ -209,7 +201,7 @@ def create_currency_downloader_gui(parent):
         selected = [c for c in currencies if c.get("checked", False) and (c["status"] == "Chưa tải" or c["status"] == "Lỗi tải")]
         
         if not selected:
-            messagebox.showwarning("⚠️ Cảnh báo", "Vui lòng chọn ít nhất một loại tiền tệ chưa tải để tải xuống!")
+            messagebox.showwarning("Cảnh báo", "Chọn ít nhất một loại tiền tệ chưa tải để tải xuống!")
             return
         service = Service("C:/Users/Long/Desktop/BTL/chromedriver.exe")
         options = webdriver.ChromeOptions()
@@ -224,14 +216,14 @@ def create_currency_downloader_gui(parent):
             for currency in selected:
                 download_csv(currency["code"].lower(), currencies, render_table, driver)
         except Exception as e:
-            messagebox.showerror("❌ Lỗi", f"Không thể khởi tạo trình duyệt: {e}")
+            messagebox.showerror("Lỗi", f"Không thể khởi tạo trình duyệt: {e}")
         finally:
             if driver is not None:
                 driver.quit()
     def delete_selected():
         selected = [c for c in currencies if c.get("checked", False)]
         if not selected:
-            messagebox.showwarning("⚠️ Cảnh báo", "Vui lòng chọn ít nhất một loại tiền tệ để xóa!")
+            messagebox.showwarning(" Cảnh báo", "Vui lòng chọn ít nhất một loại tiền tệ để xóa!")
             return
         with sqlite3.connect(DB_FILE) as conn:
             cursor = conn.cursor()

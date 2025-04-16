@@ -12,7 +12,8 @@ def select_file():
         entry_recipient.insert(0, ", ".join(emails)) 
 
 def open_currency_downloader():
-    crawlData.create_currency_downloader_gui()    
+    crawlData.gui_craw()    
+
 def send_email():
     recipient = entry_recipient.get()
     subject = entry_subject.get()
@@ -30,9 +31,8 @@ def send_email():
 def open_file_comparator():
     file_paths = filedialog.askopenfilenames(filetypes=[("CSV & Excel Files", "*.csv;*.xlsx;*.xls")])
     if len(file_paths) < 2:
-        messagebox.showwarning("Warning", "Please select at least two files.")
+        messagebox.showwarning("Warning", "Chọn ít nhất 2 file.")
         return
-    
     differences = compare.compare_reports(file_paths)
     result_text.delete(1.0, tk.END)  
     if differences:
@@ -40,10 +40,11 @@ def open_file_comparator():
         result_text.insert(tk.END, diff_result)
         set_emailContent(diff_result)  
     else:
-        result_text.insert(tk.END, "No differences found.")
-        set_emailContent("No differences found.") 
+        result_text.insert(tk.END, "Không tìm thấy điểm khác biệt.")
+        set_emailContent("Không tìm thấy điểm khác biệt") 
+        
 root = tk.Tk()
-root.title("Ứng dụng Gửi Email & So Sánh File")
+root.title("Ứng dụng Python tự động với Selenium")
 
 notebook = ttk.Notebook(root)
 notebook.pack(expand=True, fill="both")
@@ -51,6 +52,7 @@ notebook.pack(expand=True, fill="both")
 email_tab = ttk.Frame(notebook)
 notebook.add(email_tab, text="Gửi Email")
 tk.Label(email_tab, text="Người nhận:").pack()
+
 entry_recipient = tk.Entry(email_tab, width=50)
 entry_recipient.pack(pady=5)
 btn_select_file = tk.Button(email_tab, text="Chọn File", command=select_file)
@@ -62,10 +64,6 @@ entry_subject.pack(pady=5)
 tk.Label(email_tab, text="Nội dung:").pack()
 text_content = tk.Text(email_tab, width=100, height=10)
 text_content.pack(pady=5)
-def set_emailContent():
-    content = result_text.get("1.0", tk.END).strip()
-    text_content.delete("1.0", tk.END)
-    text_content.insert(tk.END, content)
 
 btn_send_email = tk.Button(email_tab, text="Gửi Email", command=send_email)
 btn_send_email.pack(pady=10)
@@ -74,11 +72,15 @@ btn_send_email.pack(pady=10)
 file_compare_tab = ttk.Frame(notebook)
 notebook.add(file_compare_tab, text="So Sánh File")
 
-btn_compare = tk.Button(file_compare_tab, text="Chọn & So Sánh File", command=open_file_comparator)
+btn_compare = tk.Button(file_compare_tab, text="Chọn File để so sánh", command=open_file_comparator)
 btn_compare.pack(pady=10)
 
 result_text = tk.Text(file_compare_tab, width=100, height=20)
 result_text.pack(padx=10, pady=10)
+def set_emailContent():
+    content = result_text.get("1.0", tk.END).strip()
+    text_content.delete("1.0", tk.END)
+    text_content.insert(tk.END, content)
 
 btn_setContent = tk.Button(file_compare_tab,text="Đặt làm nội dung email",command=set_emailContent)
 btn_setContent.pack(padx=10,pady=10)
@@ -87,6 +89,6 @@ btn_setContent.pack(padx=10,pady=10)
 currency_tab = ttk.Frame(notebook)
 notebook.add(currency_tab, text="Tải Dữ Liệu Tiền Tệ")
 
-# Sử dụng hàm từ currency_downloader để tạo giao diện trong tab này
-crawlData.create_currency_downloader_gui(currency_tab)
+
+crawlData.gui_craw(currency_tab)
 root.mainloop()

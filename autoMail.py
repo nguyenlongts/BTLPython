@@ -17,31 +17,27 @@ def send_email(to_email, subject, body):
         driver = webdriver.Chrome(service=service, options=options)
         driver.get("https://mail.google.com/")
         WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, "//div[contains(text(), 'Compose')]")))
-
-        # Mở trình soạn thư
         compose_button = driver.find_element(By.XPATH, "//div[contains(text(), 'Compose')]")
         compose_button.click()
         WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, "div[role='dialog']")))
-
-        # Nhập email người nhận
         to_field = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.XPATH, "//input[@aria-label='To recipients']"))
         )
         to_field.send_keys(to_email)
         time.sleep(5)
-        # Nhập tiêu đề email
+
         subject_field = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, "input[name='subjectbox'], input[placeholder='Subject']"))
         )
         subject_field.send_keys(subject)
         time.sleep(5)
-        # Nhập nội dung email
+
         body_field = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, "div[role='textbox'][aria-label='Message Body'], div[contenteditable='true'][aria-label='Message Body']"))
         )
         body_field.send_keys(body)
         time.sleep(5)
-        # Gửi email
+
         send_button = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, "div[role='button'][aria-label*='Send']"))
         )
@@ -52,7 +48,7 @@ def send_email(to_email, subject, body):
         time.sleep(3)
         return True
     except Exception as e:
-        print(f"❌ Lỗi khi gửi email: {e}")
+        print(f" Lỗi khi gửi email: {e}")
         return False
     finally:
         driver.quit()
